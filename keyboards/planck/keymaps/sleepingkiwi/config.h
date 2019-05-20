@@ -37,3 +37,8 @@
 // Most tactile encoders have detents every 4 stages
 #define ENCODER_RESOLUTION 4
 
+
+/** setting up tapping timer for tapdanced brackets
+ *  ------------------------------------------------------------------------------------------------
+**/
+#define TAPPING_TERM 200
