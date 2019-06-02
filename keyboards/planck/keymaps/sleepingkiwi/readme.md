@@ -1,5 +1,7 @@
 # Sleepingkiwi's Planck Layout
 
+`version 1.2 - 2019-06-02`
+
 [layout](http://www.keyboard-layout-editor.com/#/gists/8c8d6f69549e8be3e37c62b79ac65f7f)
 
 ---
