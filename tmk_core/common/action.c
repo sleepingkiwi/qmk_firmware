@@ -44,8 +44,11 @@ int retro_tapping_counter = 0;
 #include <fauxclicky.h>
 #endif
 
+#ifndef TAP_CODE_DELAY
+#  define TAP_CODE_DELAY 0
+#endif
 #ifndef TAP_HOLD_CAPS_DELAY
-#  define TAP_HOLD_CAPS_DELAY 200
+#  define TAP_HOLD_CAPS_DELAY 80
 #endif
 /** \brief Called to execute an action.
  *
@@ -330,6 +333,9 @@ void process_action(keyrecord_t *record, action_t action)
                         } else {
                             if (tap_count > 0) {
                                 dprint("MODS_TAP: Tap: unregister_code\n");
+                                if (action.layer_tap.code == KC_CAPS) {
+                                  wait_ms(TAP_HOLD_CAPS_DELAY);
+                                }
                                 unregister_code(action.key.code);
                             } else {
                                 dprint("MODS_TAP: No tap: add_mods\n");
@@ -406,13 +412,13 @@ void process_action(keyrecord_t *record, action_t action)
                 /* Default Layer Bitwise Operation */
                 if (!event.pressed) {
                     uint8_t shift = action.layer_bitop.part*4;
-                    uint32_t bits = ((uint32_t)action.layer_bitop.bits)<<shift;
-                    uint32_t mask = (action.layer_bitop.xbit) ? ~(((uint32_t)0xf)<<shift) : 0;
+                    layer_state_t bits = ((layer_state_t)action.layer_bitop.bits)<<shift;
+                    layer_state_t mask = (action.layer_bitop.xbit) ? ~(((layer_state_t)0xf)<<shift) : 0;
                     switch (action.layer_bitop.op) {
                         case OP_BIT_AND: default_layer_and(bits | mask); break;
                         case OP_BIT_OR:  default_layer_or(bits | mask);  break;
                         case OP_BIT_XOR: default_layer_xor(bits | mask); break;
-                        case OP_BIT_SET: default_layer_and(mask); default_layer_or(bits); break;
+                        case OP_BIT_SET: default_layer_set(bits | mask); break;
                     }
                 }
             } else {
@@ -420,13 +426,13 @@ void process_action(keyrecord_t *record, action_t action)
                 if (event.pressed ? (action.layer_bitop.on & ON_PRESS) :
                                     (action.layer_bitop.on & ON_RELEASE)) {
                     uint8_t shift = action.layer_bitop.part*4;
-                    uint32_t bits = ((uint32_t)action.layer_bitop.bits)<<shift;
-                    uint32_t mask = (action.layer_bitop.xbit) ? ~(((uint32_t)0xf)<<shift) : 0;
+                    layer_state_t bits = ((layer_state_t)action.layer_bitop.bits)<<shift;
+                    layer_state_t mask = (action.layer_bitop.xbit) ? ~(((layer_state_t)0xf)<<shift) : 0;
                     switch (action.layer_bitop.op) {
                         case OP_BIT_AND: layer_and(bits | mask); break;
                         case OP_BIT_OR:  layer_or(bits | mask);  break;
                         case OP_BIT_XOR: layer_xor(bits | mask); break;
-                        case OP_BIT_SET: layer_and(mask); layer_or(bits); break;
+                        case OP_BIT_SET: layer_state_set(bits | mask); break;
                     }
                 }
             }
@@ -522,7 +528,9 @@ void process_action(keyrecord_t *record, action_t action)
                             dprint("KEYMAP_TAP_KEY: Tap: unregister_code\n");
                             if (action.layer_tap.code == KC_CAPS) {
                                 wait_ms(TAP_HOLD_CAPS_DELAY);
-                            }
+                            } else {
+                                wait_ms(TAP_CODE_DELAY);
+                              }
                             unregister_code(action.layer_tap.code);
                         } else {
                             dprint("KEYMAP_TAP_KEY: No tap: Off on release\n");
@@ -618,6 +626,7 @@ void process_action(keyrecord_t *record, action_t action)
                         if (event.pressed) {
                             register_code(action.swap.code);
                         } else {
+                            wait_ms(TAP_CODE_DELAY);
                             unregister_code(action.swap.code);
                             *record = (keyrecord_t){}; // hack: reset tap mode
                         }
@@ -670,8 +679,7 @@ void process_action(keyrecord_t *record, action_t action)
         retro_tapping_counter = 0;
       } else {
         if (retro_tapping_counter == 2) {
-          register_code(action.layer_tap.code);
-          unregister_code(action.layer_tap.code);
+          tap_code(action.layer_tap.code);
         }
         retro_tapping_counter = 0;
       }
@@ -858,12 +866,9 @@ void tap_code(uint8_t code) {
   register_code(code);
   if (code == KC_CAPS) {
     wait_ms(TAP_HOLD_CAPS_DELAY);
-  }
-  #if TAP_CODE_DELAY > 0
-  else {
+  } else {
     wait_ms(TAP_CODE_DELAY);
   }
-  #endif
   unregister_code(code);
 }
 
